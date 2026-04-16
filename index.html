@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Ranking TARDIS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet" />
+    <style>
+        :root {
+            --gold: #D4AF37;
+            --gold-glow: rgba(212, 175, 55, 0.8);
+            --gold-bg: linear-gradient(135deg, #1a1608 0%, #050505 100%);
+            --silver: #C0C0C0;
+            --silver-glow: rgba(192, 192, 192, 0.3);
+            --silver-bg: linear-gradient(135deg, #1a1a1a 0%, #050505 100%);
+            --bronze: #CD7F32;
+            --bronze-glow: rgba(205, 127, 50, 0.3);
+            --bronze-bg: linear-gradient(135deg, #1a1008 0%, #050505 100%);
+        }
+
+        ::selection { background-color: var(--gold); color: #000000; }
+
+        body {
+            font-family: 'Rajdhani', sans-serif;
+            background-color: #000000;
+            color: #ffffff;
+            overflow-x: hidden;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .wave-container { display: flex; justify-content: center; gap: 2px; }
+        .wave-letter {
+            display: inline-block;
+            color: #ffffff;
+            animation: waveLetters 3s ease-in-out infinite;
+            text-shadow: 0 0 5px rgba(255,255,255,0.1);
+        }
+
+        @keyframes waveLetters {
+            0%, 100% { transform: scale(1); color: #ffffff; text-shadow: 0 0 5px rgba(255,255,255,0.1); }
+            50% { transform: scale(1.3); color: var(--gold); text-shadow: 0 0 20px var(--gold-glow), 0 0 40px var(--gold-glow); }
+        }
+
+        .wave-letter:nth-child(1) { animation-delay: 0.1s; }
+        .wave-letter:nth-child(2) { animation-delay: 0.2s; }
+        .wave-letter:nth-child(3) { animation-delay: 0.3s; }
+        .wave-letter:nth-child(4) { animation-delay: 0.4s; }
+        .wave-letter:nth-child(5) { animation-delay: 0.5s; }
+        .wave-letter:nth-child(6) { animation-delay: 0.6s; }
+        .wave-letter:nth-child(7) { animation-delay: 0.7s; }
+        .wave-letter:nth-child(8) { animation-delay: 0.8s; }
+        .wave-letter:nth-child(9) { animation-delay: 0.9s; }
+        .wave-letter:nth-child(10) { animation-delay: 1.0s; }
+        .wave-letter:nth-child(11) { animation-delay: 1.1s; }
+        .wave-letter:nth-child(12) { animation-delay: 1.2s; }
+        .wave-letter:nth-child(13) { animation-delay: 1.3s; }
+        .wave-letter:nth-child(14) { animation-delay: 1.4s; }
+
+        .rank-card {
+            background: linear-gradient(135deg, #111111 0%, #050505 100%);
+            border: 1px solid #222;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .first-place { border-color: var(--gold) !important; background: var(--gold-bg) !important; }
+        .second-place { border-color: var(--silver) !important; background: var(--silver-bg) !important; }
+        .third-place { border-color: var(--bronze) !important; background: var(--bronze-bg) !important; }
+
+        .rank-card:hover { transform: translateY(-2px); }
+        .first-place:hover { box-shadow: 0 10px 30px var(--gold-glow); }
+        .second-place:hover { box-shadow: 0 10px 25px var(--silver-glow); }
+        .third-place:hover { box-shadow: 0 10px 25px var(--bronze-glow); }
+
+        .trophy-wrapper, .number-wrapper {
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .rank-card:hover .trophy-wrapper,
+        .rank-card:hover .number-wrapper { transform: scale(1.4); }
+
+        .admin-only { display: none !important; }
+        .admin-flex { display: none !important; }
+        body.logged-in .admin-only { display: block !important; }
+        body.logged-in .admin-flex { display: flex !important; }
+
+        .history-item {
+            background: rgba(255, 255, 255, 0.03);
+            border-left: 2px solid var(--gold);
+            margin-bottom: 8px;
+            transition: all 0.2s;
+        }
+
+        .custom-scroll::-webkit-scrollbar { width: 4px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: var(--gold); border-radius: 10px; }
+        .custom-scroll::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.02); }
+
+        input, select, textarea {
+            background-color: #0a0a0a !important;
+            border: 1px solid #333 !important;
+            color: white !important;
+        }
+        input:focus, select:focus, textarea:focus {
+            border-color: var(--gold) !important;
+            outline: none;
+            box-shadow: 0 0 10px var(--gold-glow);
+        }
+
+        .shimmer {
+            position: absolute;
+            top: 0; left: -100%;
+            width: 50%; height: 100%;
+            background: linear-gradient(to right, transparent, rgba(255,255,255,0.03), transparent);
+            transform: skewX(-25deg);
+            pointer-events: none;
+        }
+        .rank-card:hover .shimmer { animation: shimmerMove 1.2s forwards; }
+
+        @keyframes shimmerMove {
+            0% { left: -100%; }
+            100% { left: 150%; }
+        }
+
+        #statusMessage {
+            position: fixed;
+            top: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 14px 28px;
+            border-radius: 99px;
+            z-index: 9999;
+            display: none;
+            font-weight: 700;
+            text-transform: uppercase;
+            font-size: 12px;
+            letter-spacing: 1.5px;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.6);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .glass-panel {
+            background: rgba(10, 10, 10, 0.7);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1.5px solid var(--gold);
+            box-shadow: 0 0 30px rgba(212, 175, 55, 0.15);
+        }
+
+        .btn-header {
+            color: #ffffff !important;
+            border: 1.5px solid #27272a;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .btn-header:hover {
+            border-color: var(--gold) !important;
+            box-shadow: 0 0 20px var(--gold-glow);
+            transform: translateY(-1px);
+        }
+    </style>
+</head>
+<body class="min-h-screen p-4 md:p-12 selection:bg-gold selection:text-black">
+    <div id="statusMessage"></div>
+
+    <div class="max-w-4xl mx-auto">
+        <header class="mb-12 md:mb-20 relative flex flex-col items-center pt-8">
+            <div class="absolute top-0 left-0 md:left-[-20px]">
+                <button onclick="window.openChallengesModal()" class="btn-header text-[10px] px-5 py-2 rounded-full uppercase font-bold tracking-widest bg-black/50 shadow-sm">
+                    Desafio
+                </button>
+            </div>
+
+            <h1 class="wave-container text-3xl md:text-7xl font-black tracking-tighter italic uppercase leading-tight text-center px-8 select-none">
+                <span class="wave-letter">R</span><span class="wave-letter">A</span><span class="wave-letter">N</span><span class="wave-letter">K</span><span class="wave-letter">I</span><span class="wave-letter">N</span><span class="wave-letter">G</span><span class="wave-letter">&nbsp;</span><span class="wave-letter">T</span><span class="wave-letter">A</span><span class="wave-letter">R</span><span class="wave-letter">D</span><span class="wave-letter">I</span><span class="wave-letter">S</span>
+            </h1>
+
+            <div class="h-1 w-full max-w-2xl bg-gradient-to-r from-transparent via-gold to-transparent opacity-30 mt-8"></div>
+
+            <div class="absolute top-0 right-0 md:right-[-20px]">
+                <button id="loginBtn" onclick="window.toggleLogin()" class="btn-header text-[10px] px-5 py-2 rounded-full uppercase font-bold tracking-widest bg-black/50 shadow-sm">
+                    Acesso Mestre
+                </button>
+            </div>
+        </header>
+
+        <div id="adminPanel" class="admin-only mb-12 transform transition-all duration-500">
+            <div class="bg-zinc-900/90 border border-[#D4AF37] p-6 md:p-10 rounded-[40px] shadow-2xl relative overflow-hidden">
+                <h2 class="text-xl font-bold text-gold mb-8 flex items-center gap-3 italic">
+                    <span class="w-2 h-2 rounded-full bg-gold animate-ping"></span>
+                    CONTROLE DE PONTUAÇÃO
+                </h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="space-y-2">
+                        <label class="text-[10px] text-zinc-500 uppercase font-bold ml-1 tracking-widest">Equipe</label>
+                        <select id="selectPair" class="w-full rounded-2xl p-4 outline-none appearance-none cursor-pointer font-bold tracking-tight text-white">
+                            <option value="">Carregando...</option>
+                        </select>
+                    </div>
+                    <div class="space-y-2">
+                        <label class="text-[10px] text-zinc-500 uppercase font-bold ml-1 tracking-widest">Desafio</label>
+                        <input id="taskDesc" type="text" placeholder="Ex: Meta Batida" class="w-full rounded-2xl p-4 outline-none font-medium">
+                    </div>
+                    <div class="space-y-2">
+                        <label class="text-[10px] text-zinc-500 uppercase font-bold ml-1 tracking-widest">Pontos</label>
+                        <input id="pointsAmount" type="number" placeholder="0" class="w-full rounded-2xl p-4 outline-none font-bold text-gold">
+                    </div>
+                </div>
+                <div class="mt-10">
+                    <button onclick="window.handlePoints()" class="w-full bg-gold hover:bg-white text-white hover:text-black font-black py-5 rounded-2xl transition-all shadow-xl shadow-gold/10 active:scale-[0.98] uppercase tracking-tighter text-lg">
+                        ATRIBUIR PONTOS
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="glass-panel rounded-[48px] overflow-hidden shadow-2xl relative">
+            <div id="loadingOverlay" class="absolute inset-0 bg-black/90 z-50 flex flex-col items-center justify-center transition-opacity duration-500">
+                <div class="w-12 h-12 border-4 border-gold border-t-transparent rounded-full animate-spin mb-6"></div>
+                <div id="loadingText" class="text-[11px] uppercase tracking-[0.6em] text-gold animate-pulse font-bold">Sincronizando...</div>
+            </div>
+            <div class="p-8 md:p-10 border-b border-zinc-800/50 flex justify-between items-end">
+                <div>
+                    <h2 class="text-3xl font-black italic tracking-tighter text-white uppercase leading-none">Classificação</h2>
+                    <p class="text-[10px] text-zinc-500 uppercase font-bold tracking-widest mt-2">Ranking em tempo real</p>
+                </div>
+                <div class="hidden md:block text-right">
+                    <span id="totalParticipants" class="text-2xl font-black text-zinc-800">00</span>
+                    <p class="text-[9px] text-zinc-600 uppercase font-bold">Equipes</p>
+                </div>
+            </div>
+            <div id="leaderboardList" class="p-4 md:p-8 space-y-5"></div>
+        </div>
+
+        <footer class="mt-16 text-center text-zinc-800 text-[10px] uppercase tracking-[0.5em] pb-12 font-bold">
+            TARDIS Infrastructure • Supabase Cloud • v8.0
+        </footer>
+    </div>
+
+    <div id="loginModal" class="fixed inset-0 bg-black/95 hidden items-center justify-center z-[1001] p-6 backdrop-blur-xl">
+        <div class="bg-zinc-900 border border-[#D4AF37] p-10 md:p-12 rounded-[48px] max-w-sm w-full shadow-3xl text-center">
+            <h3 class="text-2xl font-black mb-8 text-white italic uppercase tracking-tighter">Acesso Mestre</h3>
+            <div class="space-y-4 mb-10">
+                <input id="userInput" type="text" placeholder="LOGIN" class="w-full bg-[#0a0a0a] border border-[#333] rounded-2xl p-5 text-center text-white outline-none font-bold">
+                <input id="passInput" type="password" placeholder="SENHA" class="w-full bg-[#0a0a0a] border border-[#333] rounded-2xl p-5 text-center text-white outline-none font-bold">
+            </div>
+            <button onclick="window.verifyLogin()" class="w-full border border-[#333] bg-[#0a0a0a] py-5 rounded-2xl font-black text-[#D4AF37] hover:border-[#D4AF37] hover:shadow-[0_0_20px_rgba(212,175,55,0.2)] transition-all uppercase tracking-widest">
+                DESBLOQUEAR
+            </button>
+            <button onclick="window.closeModal('loginModal')" class="w-full text-white text-[10px] mt-6 font-bold uppercase hover:text-zinc-400">
+                Voltar
+            </button>
+        </div>
+    </div>
+
+    <div id="challengesModal" class="fixed inset-0 bg-black/95 hidden items-center justify-center z-[1001] p-4 backdrop-blur-xl">
+        <div class="bg-zinc-900 border border-[#D4AF37] p-6 md:p-10 rounded-[48px] max-lg w-full shadow-3xl flex flex-col relative overflow-y-auto max-h-[95vh] custom-scroll">
+            <h3 class="text-2xl font-black mb-6 text-white italic uppercase tracking-tighter text-center">Desafios TARDIS</h3>
+
+            <div class="relative h-64 md:h-72 flex flex-col items-center justify-center bg-black/40 rounded-3xl p-4 border border-zinc-800 mb-4 overflow-hidden">
+                <button onclick="window.prevChallenge()" class="absolute left-1 z-20 text-zinc-500 hover:text-gold transition-colors text-2xl font-black p-4">❮</button>
+
+                <div class="w-full h-full flex flex-col items-center justify-center px-10 pt-4 text-center">
+                    <div id="challengeScrollArea" class="custom-scroll overflow-y-auto w-full max-h-40 pr-2 flex flex-col">
+                        <div id="statusBadge" class="mb-3 flex flex-col items-center"></div>
+                        <p id="challengeText" class="text-white text-lg font-bold italic leading-relaxed whitespace-pre-wrap text-left w-full min-h-[1rem]"></p>
+                    </div>
+                    <span id="challengeCounter" class="block mt-4 text-[10px] text-zinc-600 uppercase font-black tracking-widest">0 / 0</span>
+                </div>
+
+                <button onclick="window.nextChallenge()" class="absolute right-1 z-20 text-zinc-500 hover:text-gold transition-colors text-2xl font-black p-4">❯</button>
+            </div>
+
+            <div id="challengeAdminControls" class="admin-flex flex-row gap-2 mb-6 w-full">
+                <button onclick="window.openWinnerSelection()" class="flex-1 bg-green-900/30 border border-green-800/30 text-green-400 text-[9px] md:text-[10px] font-black py-4 rounded-xl uppercase hover:bg-green-800/50 transition-all">Concluir</button>
+                <button onclick="window.deleteChallengeItem()" class="flex-1 bg-red-900/30 border border-red-800/30 text-red-500 text-[9px] md:text-[10px] font-black py-4 rounded-xl uppercase hover:bg-red-800/50 transition-all">Apagar</button>
+            </div>
+
+            <button onclick="window.openCreateChallengeModal()" class="admin-only w-full bg-zinc-800 text-white font-black py-4 rounded-2xl uppercase tracking-widest text-[10px] hover:bg-zinc-700 transition-all mb-4">
+                Criar Desafio
+            </button>
+
+            <button onclick="window.closeModal('challengesModal')" class="w-full text-white text-[10px] mt-4 font-bold uppercase hover:text-zinc-400 text-center">
+                Fechar
+            </button>
+        </div>
+    </div>
+
+    <div id="createChallengeModal" class="fixed inset-0 bg-black/98 hidden items-center justify-center z-[1002] p-6 backdrop-blur-2xl">
+        <div class="bg-zinc-900 border border-white/20 p-8 md:p-12 rounded-[48px] max-w-md w-full shadow-3xl">
+            <h3 class="text-xl font-black mb-6 text-white uppercase italic text-center">Novo Desafio</h3>
+            <div class="space-y-4 mb-8">
+                <div class="space-y-1">
+                    <label class="text-[9px] text-zinc-500 uppercase font-black ml-1">Data do Desafio</label>
+                    <input id="newChallengeDate" type="date" class="w-full rounded-xl p-4 text-xs font-bold text-white uppercase">
+                </div>
+                <div class="space-y-1">
+                    <label class="text-[9px] text-zinc-500 uppercase font-black ml-1">Texto do Desafio</label>
+                    <textarea id="newChallengeText" rows="4" class="w-full rounded-xl p-4 text-sm font-medium resize-none text-white" placeholder="Escreva o conteúdo..."></textarea>
+                </div>
+            </div>
+            <div class="flex flex-col gap-3">
+                <button onclick="window.addChallenge()" class="w-full bg-white text-black font-black py-5 rounded-2xl uppercase tracking-widest text-xs hover:bg-zinc-200 transition-all shadow-xl">
+                    Publicar Desafio
+                </button>
+                <button onclick="window.closeModal('createChallengeModal')" class="w-full text-zinc-500 text-[10px] font-bold uppercase hover:text-white py-2">
+                    Cancelar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="editLogModal" class="fixed inset-0 bg-black/98 hidden items-center justify-center z-[1004] p-6 backdrop-blur-2xl">
+        <div class="bg-zinc-900 border border-gold/30 p-8 md:p-12 rounded-[48px] max-w-sm w-full shadow-3xl">
+            <h3 class="text-xl font-black mb-6 text-white uppercase italic text-center text-gold">Editar Registro</h3>
+            <div class="space-y-4 mb-8">
+                <div class="space-y-1">
+                    <label class="text-[9px] text-zinc-500 uppercase font-black ml-1">Descrição</label>
+                    <input id="editLogDesc" type="text" class="w-full rounded-xl p-4 text-sm font-medium text-white">
+                </div>
+                <div class="space-y-1">
+                    <label class="text-[9px] text-zinc-500 uppercase font-black ml-1">Pontos</label>
+                    <input id="editLogPts" type="number" class="w-full rounded-xl p-4 text-sm font-bold text-gold">
+                </div>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="window.saveEditedLog()" class="flex-1 bg-gold text-black font-black py-4 rounded-xl uppercase text-xs">Salvar</button>
+                <button onclick="window.closeModal('editLogModal')" class="flex-1 bg-zinc-800 text-white font-bold py-4 rounded-xl uppercase text-xs">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="winnerModal" class="fixed inset-0 bg-black/98 hidden items-center justify-center z-[1003] p-6 backdrop-blur-2xl">
+        <div class="bg-zinc-900 border border-green-500/50 p-10 rounded-[48px] max-w-sm w-full shadow-3xl text-center">
+            <h3 class="text-xl font-black mb-6 text-white uppercase italic tracking-tighter text-green-500">Selecionar Vencedor</h3>
+            <div id="winnerList" class="space-y-3 mb-8 max-h-60 overflow-y-auto custom-scroll pr-2"></div>
+            <button onclick="window.closeModal('winnerModal')" class="text-zinc-500 text-[10px] uppercase font-black hover:text-white">Cancelar</button>
+        </div>
+    </div>
+
+    <script type="module">
+        const SUPABASE_URL = 'https://ncljlqwfbobzihvvfcjb.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5jbGpscXdmYm9iemlodnZmY2piIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyNjg5MzYsImV4cCI6MjA5MTg0NDkzNn0.-VMBHbBRcG7cxsDnTNQ1e5ejMtIJM74qcpufCDjQt4k';
+
+        let supabaseClient = null;
+        let supabaseReady = false;
+        try {
+            if (!SUPABASE_URL.startsWith('COLE_AQUI') && !SUPABASE_KEY.startsWith('COLE_AQUI')) {
+                supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+                supabaseReady = true;
+            }
+        } catch (e) {
+            console.error('Supabase init error', e);
+        }
+
+        const teamNamesMap = {
+            "Bruna e Thais": "MIGAS",
+            "João e Bruno": "ALPHA",
+            "Jhansen e Alvaro": "BROTHERS",
+            "Erick e Marcos": "BETINHA",
+            "Nathan e Diego": "DELTA"
+        };
+
+        let teams = [];
+        let challenges = [];
+        let currentChallengeIdx = 0;
+        let isAdmin = false;
+        let isTableMissing = false;
+
+        let currentEditTeamId = null;
+        let currentEditLogIdx = null;
+
+        const showStatus = (text, type = 'success') => {
+            const el = document.getElementById('statusMessage');
+            if (!el) return;
+            el.textContent = text;
+            el.style.display = 'block';
+            el.style.backgroundColor = type === 'success' ? '#D4AF37' : '#ef4444';
+            el.style.color = type === 'success' ? 'black' : 'white';
+            setTimeout(() => { el.style.display = 'none'; }, 3000);
+        };
+
+        const ensureSupabaseReady = () => {
+            if (!supabaseReady) {
+                showStatus('Preencha SUPABASE_URL e SUPABASE_ANON_KEY no index.html', 'error');
+                throw new Error('Supabase não configurado');
+            }
+        };
+
+        window.toggleLogin = async () => {
+            if (isAdmin) {
+                try {
+                    await fetch('/api/logout', { method: 'POST' });
+                } catch (e) {}
+
+                isAdmin = false;
+                document.body.classList.remove('logged-in');
+                document.getElementById('loginBtn').textContent = 'Acesso Mestre';
+                window.updateUI();
+                showStatus('Sessão Encerrada');
+            } else {
+                document.getElementById('loginModal').style.display = 'flex';
+                document.getElementById('userInput').focus();
+            }
+        };
+
+        window.verifyLogin = async () => {
+            const user = document.getElementById('userInput').value.trim();
+            const pass = document.getElementById('passInput').value.trim();
+
+            try {
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user, pass })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    isAdmin = true;
+                    document.body.classList.add('logged-in');
+                    document.getElementById('loginBtn').textContent = 'Sair Painel';
+                    window.closeModal('loginModal');
+                    window.updateUI();
+                    showStatus('Controle de Mestre Ativado');
+                } else {
+                    showStatus('Usuário ou senha incorretos', 'error');
+                }
+            } catch (e) {
+                showStatus('Erro ao autenticar', 'error');
+            }
+        };
+
+        const checkAdminSession = async () => {
+            try {
+                const response = await fetch('/api/me');
+                const data = await response.json();
+
+                if (data.authenticated) {
+                    isAdmin = true;
+                    document.body.classList.add('logged-in');
+                    document.getElementById('loginBtn').textContent = 'Sair Painel';
+                    window.updateUI();
+                }
+            } catch (e) {}
+        };
+
+        window.closeModal = (id) => {
+            const el = document.getElementById(id);
+            if (el) el.style.display = 'none';
+        };
+
+        window.openChallengesModal = async () => {
+            document.getElementById('challengesModal').style.display = 'flex';
+            await window.fetchChallenges();
+        };
+
+        window.openCreateChallengeModal = () => {
+            document.getElementById('createChallengeModal').style.display = 'flex';
+            document.getElementById('newChallengeDate').value = new Date().toISOString().split('T')[0];
+        };
+
+        window.fetchChallenges = async () => {
+            try {
+                ensureSupabaseReady();
+                const { data, error } = await supabaseClient
+                    .from('challenges')
+                    .select('*')
+                    .order('challenge_date', { ascending: false });
+
+                if (error) {
+                    if (error.code === 'PGRST205') {
+                        isTableMissing = true;
+                        challenges = [];
+                        window.renderChallenge();
+                        return;
+                    }
+                    throw error;
+                }
+
+                challenges = data || [];
+                isTableMissing = false;
+                if (currentChallengeIdx >= challenges.length) currentChallengeIdx = 0;
+                window.renderChallenge();
+            } catch (e) {
+                window.renderChallenge();
+            }
+        };
+
+        const formatFriendlyDate = (dateRaw) => {
+            if (!dateRaw) return 'Sem data';
+            if (dateRaw.includes('-') && !dateRaw.includes('T')) {
+                const parts = dateRaw.split('-');
+                return `${parts[2]}/${parts[1]}/${parts[0]}`;
+            }
+            return new Date(dateRaw).toLocaleDateString('pt-BR');
+        };
+
+        window.renderChallenge = () => {
+            const textEl = document.getElementById('challengeText');
+            const countEl = document.getElementById('challengeCounter');
+            const statusBadge = document.getElementById('statusBadge');
+            if (!textEl) return;
+
+            if (isTableMissing) {
+                textEl.innerHTML = "<span class='text-red-500 font-bold'>Erro: tabela 'challenges' não configurada.</span>";
+                return;
+            }
+
+            if (challenges.length > 0) {
+                const c = challenges[currentChallengeIdx];
+                textEl.innerText = c.text;
+                countEl.textContent = `${currentChallengeIdx + 1} / ${challenges.length}`;
+                const dateRaw = c.challenge_date || c.created_at;
+                const dateFormatted = formatFriendlyDate(dateRaw);
+
+                if (c.is_completed) {
+                    statusBadge.innerHTML = `
+                        <div class="w-10 h-10 bg-green-500/20 rounded-full flex items-center justify-center mb-2 border border-green-500/50">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
+                            </svg>
+                        </div>
+                        <p class="text-[10px] text-green-500 uppercase font-black tracking-widest mb-1 text-center font-bold">CONCLUÍDO (${dateFormatted})</p>
+                        <p class="text-white font-black text-sm uppercase text-center">${c.winner_name || 'Vencedor'}</p>
+                    `;
+                } else {
+                    statusBadge.innerHTML = `
+                        <p class="text-[10px] text-gold uppercase font-black tracking-[0.2em] mb-1 text-center italic font-bold">EM ABERTO</p>
+                        <p class="text-zinc-500 font-bold text-[9px] uppercase tracking-widest text-center">${dateFormatted}</p>
+                    `;
+                }
+            } else {
+                textEl.innerText = 'Nenhum desafio registado.';
+                countEl.textContent = '0 / 0';
+                statusBadge.innerHTML = '';
+            }
+
+            document.getElementById('challengeScrollArea').scrollTop = 0;
+        };
+
+        window.nextChallenge = () => {
+            if (challenges.length > 1) {
+                currentChallengeIdx = (currentChallengeIdx + 1) % challenges.length;
+                window.renderChallenge();
+            }
+        };
+
+        window.prevChallenge = () => {
+            if (challenges.length > 1) {
+                currentChallengeIdx = (currentChallengeIdx - 1 + challenges.length) % challenges.length;
+                window.renderChallenge();
+            }
+        };
+
+        window.addChallenge = async () => {
+            const text = document.getElementById('newChallengeText').value.trim();
+            const challengeDate = document.getElementById('newChallengeDate').value;
+
+            if (!text || !challengeDate) {
+                showStatus('Preencha data e texto!', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/add-challenge', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text, challengeDate })
+                });
+
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'Erro');
+
+                document.getElementById('newChallengeText').value = '';
+                showStatus('Desafio Publicado!');
+                window.closeModal('createChallengeModal');
+                await window.fetchChallenges();
+            } catch (e) {
+                showStatus('Erro ao gravar', 'error');
+            }
+        };
+
+        window.deleteChallengeItem = async () => {
+            if (challenges.length === 0) return;
+
+            try {
+                const response = await fetch('/api/delete-challenge', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ challengeId: challenges[currentChallengeIdx].id })
+                });
+
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'Erro');
+
+                showStatus('Eliminado!');
+                currentChallengeIdx = 0;
+                await window.fetchChallenges();
+            } catch (e) {
+                showStatus('Erro ao eliminar', 'error');
+            }
+        };
+
+        window.openWinnerSelection = () => {
+            const list = document.getElementById('winnerList');
+            list.innerHTML = '';
+
+            const displayTeams = teams.length > 0
+                ? teams.map(t => ({ name: t.name }))
+                : Object.keys(teamNamesMap).map(n => ({ name: n }));
+
+            displayTeams.forEach(t => {
+                const teamName = teamNamesMap[t.name] || t.name;
+                const members = teamNamesMap[t.name] ? `(${t.name})` : '';
+                const btn = document.createElement('button');
+                btn.className = 'w-full bg-[#0a0a0a] border border-zinc-800 p-4 rounded-2xl text-[10px] font-bold text-zinc-300 hover:border-green-500 hover:text-white transition-all text-left uppercase';
+                btn.innerHTML = `<span>${teamName}</span> <span class="opacity-30 ml-2 font-medium">${members}</span>`;
+                btn.onclick = () => window.setChallengeWinner(challenges[currentChallengeIdx].id, `${teamName} ${members}`.trim());
+                list.appendChild(btn);
+            });
+
+            document.getElementById('winnerModal').style.display = 'flex';
+        };
+
+        window.setChallengeWinner = async (id, winnerName) => {
+            try {
+                const response = await fetch('/api/set-challenge-winner', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ challengeId: id, winnerName })
+                });
+
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'Erro');
+
+                window.closeModal('winnerModal');
+                showStatus('Vencedor Registado!');
+                await window.fetchChallenges();
+            } catch (e) {
+                showStatus('Erro ao concluir', 'error');
+            }
+        };
+
+        const fetchTeams = async () => {
+            try {
+                ensureSupabaseReady();
+                const { data, error } = await supabaseClient.from('teams').select('*');
+                if (error) throw error;
+
+                teams = data || [];
+                window.updateUI();
+
+                const loader = document.getElementById('loadingOverlay');
+                if (loader) {
+                    loader.style.opacity = '0';
+                    setTimeout(() => loader.style.display = 'none', 500);
+                }
+            } catch (e) {
+                const loader = document.getElementById('loadingOverlay');
+                if (loader) {
+                    loader.style.opacity = '0';
+                    setTimeout(() => loader.style.display = 'none', 500);
+                }
+            }
+        };
+
+        const setupPolling = () => { setInterval(fetchTeams, 10000); };
+
+        window.toggleHistory = (id) => {
+            const div = document.getElementById(`history-${id}`);
+            if (!div) return;
+            const isHidden = div.classList.contains('hidden');
+            document.querySelectorAll('[id^="history-"]').forEach(d => d.classList.add('hidden'));
+            if (isHidden) div.classList.remove('hidden');
+        };
+
+        window.deletePoint = async (teamId, index) => {
+            try {
+                const response = await fetch('/api/delete-log', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ teamId, index })
+                });
+
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'Erro');
+
+                showStatus('Registro Apagado');
+                await fetchTeams();
+            } catch (e) {
+                showStatus('Erro ao apagar', 'error');
+            }
+        };
+
+        window.openEditPoint = (teamId, index) => {
+            const team = teams.find(t => t.id === teamId);
+            if (!team) return;
+
+            currentEditTeamId = teamId;
+            currentEditLogIdx = index;
+
+            const item = team.history[index];
+            document.getElementById('editLogDesc').value = item.challenge;
+            document.getElementById('editLogPts').value = item.pts;
+            document.getElementById('editLogModal').style.display = 'flex';
+        };
+
+        window.saveEditedLog = async () => {
+            const newDesc = document.getElementById('editLogDesc').value.trim();
+            const newPts = parseInt(document.getElementById('editLogPts').value);
+
+            if (!currentEditTeamId || currentEditLogIdx === null || isNaN(newPts)) return;
+
+            try {
+                const response = await fetch('/api/edit-log', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        teamId: currentEditTeamId,
+                        index: currentEditLogIdx,
+                        challenge: newDesc,
+                        points: newPts
+                    })
+                });
+
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'Erro');
+
+                showStatus('Registro Atualizado');
+                window.closeModal('editLogModal');
+                await fetchTeams();
+            } catch (e) {
+                showStatus('Erro ao salvar', 'error');
+            }
+        };
+
+        const getTrophySVG = (rank, color) => {
+            return `
+                <div class="trophy-wrapper relative w-16 h-16">
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-full drop-shadow-xl">
+                        <path d="M19 5H18V4C18 3.44772 17.5523 3 17 3H7C6.44772 3 6 3.44772 6 4V5H5C3.34315 5 2 6.34315 2 8V9C2 10.6569 3.34315 12 5 12H6.17071C6.58254 13.7177 7.90312 15.0383 9.62078 15.4493C10.0571 16.3433 11.0001 17 12 17C12.9999 17 13.9429 16.3433 14.3792 15.4493C16.0969 15.0383 17.4175 13.7177 17.8293 12H19C20.6569 12 22 10.6569 22 9V8C22 6.34315 20.6569 5 19 5ZM5 10C4.44772 10 4 9.55228 4 9V8C4 7.44772 4.44772 7 5 7H6V10H5ZM20 9C20 9.55228 19.5523 10 19 10H18V7H19C19.5523 7 20 7.44772 20 8V9ZM12 19C10.8954 19 10 19.8954 10 21C10 21.5523 10.4477 22 11 22H13C13.5523 22 14 21.5523 14 21C14 19.8954 13.1046 19 12 19Z" fill="${color}"/>
+                    </svg>
+                    <span class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-[60%] text-xs font-black text-black">${rank}</span>
+                </div>
+            `;
+        };
+
+        window.updateUI = () => {
+            const list = document.getElementById('leaderboardList');
+            const select = document.getElementById('selectPair');
+            if (!list || !select) return;
+
+            const sorted = [...teams].sort((a, b) => b.score - a.score || a.name.localeCompare(b.name));
+            const currentSelection = select.value;
+
+            select.innerHTML = '<option value="">Escolher Equipe...</option>';
+            [...teams].sort((a,b) => a.name.localeCompare(b.name)).forEach(t => {
+                const displayName = teamNamesMap[t.name] || t.name;
+                const opt = document.createElement('option');
+                opt.value = t.id;
+                opt.textContent = `${displayName} (${t.name})`;
+                select.appendChild(opt);
+            });
+            select.value = currentSelection;
+
+            document.getElementById('totalParticipants').textContent = teams.length.toString().padStart(2, '0');
+            list.innerHTML = '';
+
+            sorted.forEach((team, index) => {
+                const rank = index + 1;
+                let rankClass = '';
+                let badgeHTML = '';
+
+                if (rank === 1 && team.score > 0) {
+                    rankClass = 'first-place';
+                    badgeHTML = getTrophySVG(1, '#D4AF37');
+                } else if (rank === 2 && team.score > 0) {
+                    rankClass = 'second-place';
+                    badgeHTML = getTrophySVG(2, '#C0C0C0');
+                } else if (rank === 3 && team.score > 0) {
+                    rankClass = 'third-place';
+                    badgeHTML = getTrophySVG(3, '#CD7F32');
+                } else {
+                    badgeHTML = `<div class="number-wrapper w-14 md:w-16 text-center text-4xl font-black text-white">${rank}</div>`;
+                }
+
+                const displayTeamName = teamNamesMap[team.name] || team.name;
+                const displayMembers = teamNamesMap[team.name] ? team.name : '';
+
+                const historyHtml = team.history && team.history.length > 0
+                    ? team.history.map((h, hIdx) => `
+                        <div class="history-item p-4 rounded-2xl flex justify-between items-center group">
+                            <div class="flex flex-col">
+                                <span class="text-zinc-300 font-bold uppercase text-[11px]">${h.challenge}</span>
+                                <span class="text-[8px] text-zinc-600 font-bold">${h.date || 'S/ DATA'}</span>
+                            </div>
+                            <div class="flex items-center gap-4">
+                                <span class="text-gold font-mono font-black">${h.pts > 0 ? '+' : ''}${h.pts}</span>
+                                <div class="hidden admin-flex gap-2">
+                                    <button onclick="event.stopPropagation(); window.openEditPoint('${team.id}', ${hIdx})" class="text-[9px] text-zinc-500 hover:text-white uppercase font-black px-2 py-1 bg-white/5 rounded-md">Editar</button>
+                                    <button onclick="event.stopPropagation(); window.deletePoint('${team.id}', ${hIdx})" class="text-[9px] text-red-500/70 hover:text-red-500 uppercase font-black px-2 py-1 bg-white/5 rounded-md">Apagar</button>
+                                </div>
+                            </div>
+                        </div>
+                    `).reverse().join('')
+                    : '<div class="text-[9px] text-zinc-700 italic text-center py-6">Sem registros</div>';
+
+                list.innerHTML += `
+                    <div class="flex flex-col group">
+                        <div onclick="window.toggleHistory('${team.id}')" class="rank-card p-5 md:p-6 rounded-[36px] flex items-center gap-6 ${rankClass}">
+                            <div class="shimmer"></div>
+                            <div class="flex items-center justify-center min-w-[64px]">${badgeHTML}</div>
+                            <div class="flex-grow">
+                                <div class="font-bold uppercase tracking-widest text-zinc-100 text-lg md:text-2xl">${displayTeamName}</div>
+                                <div class="flex items-center gap-2 mt-0.5">
+                                    <span class="text-[10px] md:text-xs text-zinc-500 font-semibold uppercase tracking-wider">${displayMembers}</span>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-4xl md:text-5xl font-black text-white italic leading-none">${team.score}</div>
+                                <div class="text-[9px] text-gold uppercase font-black tracking-widest mt-1">PONTOS</div>
+                            </div>
+                        </div>
+                        <div id="history-${team.id}" class="hidden mt-3 p-6 glass-panel rounded-[36px] border border-zinc-800/30" style="border: 1.5px solid var(--gold)">
+                            <div class="max-h-60 overflow-y-auto custom-scroll space-y-2 pr-1">${historyHtml}</div>
+                        </div>
+                    </div>
+                `;
+            });
+        };
+
+        window.handlePoints = async () => {
+            if (!isAdmin) return;
+
+            const teamId = document.getElementById('selectPair').value;
+            const ptsInput = parseInt(document.getElementById('pointsAmount').value);
+            const challenge = document.getElementById('taskDesc').value.trim();
+
+            if (!teamId || isNaN(ptsInput)) return;
+
+            try {
+                const response = await fetch('/api/add-points', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        teamId,
+                        points: ptsInput,
+                        challenge: challenge || 'Atribuição Direta'
+                    })
+                });
+
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'Erro');
+
+                document.getElementById('pointsAmount').value = '';
+                document.getElementById('taskDesc').value = '';
+                await fetchTeams();
+                showStatus('Pontos Atribuídos!');
+            } catch (e) {
+                showStatus('Erro ao salvar', 'error');
+            }
+        };
+
+        await checkAdminSession();
+        await fetchTeams();
+        setupPolling();
+    </script>
+</body>
+</html>
