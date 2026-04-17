@@ -7,6 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&display=swap" rel="stylesheet" />
     <style>
         :root {
             --gold: #D4AF37;
@@ -18,9 +19,20 @@
             --bronze: #CD7F32;
             --bronze-glow: rgba(205, 127, 50, 0.3);
             --bronze-bg: linear-gradient(135deg, #1a1008 0%, #050505 100%);
+
+            /* HUD palette */
+            --hud-cyan: #45f0ff;
+            --hud-cyan-soft: rgba(69, 240, 255, 0.14);
+            --hud-panel: rgba(6, 10, 16, 0.66);
+            --hud-panel-strong: rgba(6, 10, 16, 0.82);
         }
 
         ::selection { background-color: var(--gold); color: #000000; }
+
+        /* Tailwind CDN doesn't know custom tokens like "gold" */
+        .text-gold { color: var(--gold) !important; }
+        .bg-gold { background-color: var(--gold) !important; }
+        .border-gold { border-color: var(--gold) !important; }
 
         body {
             font-family: 'Rajdhani', sans-serif;
@@ -28,6 +40,67 @@
             color: #ffffff;
             overflow-x: hidden;
             -webkit-tap-highlight-color: transparent;
+        }
+
+        /* Futuristic HUD background (glow + grid) */
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            z-index: -2;
+            pointer-events: none;
+            background:
+                radial-gradient(850px 520px at 20% 12%, rgba(69,240,255,0.12), transparent 60%),
+                radial-gradient(780px 560px at 85% 18%, rgba(212,175,55,0.10), transparent 60%),
+                radial-gradient(900px 720px at 50% 92%, rgba(69,240,255,0.08), transparent 62%),
+                linear-gradient(180deg, #000 0%, #05070b 45%, #000 100%);
+        }
+        body::after {
+            content: "";
+            position: fixed;
+            inset: 0;
+            z-index: -1;
+            pointer-events: none;
+            opacity: 0.95;
+            background:
+                radial-gradient(circle at 20% 30%, rgba(255,255,255,0.10) 0 1px, transparent 2px),
+                radial-gradient(circle at 65% 18%, rgba(255,255,255,0.08) 0 1px, transparent 2px),
+                radial-gradient(circle at 82% 64%, rgba(255,255,255,0.10) 0 1px, transparent 2px),
+                radial-gradient(circle at 35% 72%, rgba(255,255,255,0.08) 0 1px, transparent 2px),
+                repeating-linear-gradient(90deg, rgba(69,240,255,0.030) 0 1px, transparent 1px 44px),
+                repeating-linear-gradient(0deg, rgba(69,240,255,0.020) 0 1px, transparent 1px 44px);
+            mix-blend-mode: screen;
+            animation: hudFloat 18s ease-in-out infinite;
+        }
+        @keyframes hudFloat {
+            0%, 100% { transform: translate3d(0,0,0); opacity: 0.90; }
+            50% { transform: translate3d(0,-10px,0); opacity: 0.98; }
+        }
+
+        .brand-title { font-family: 'Cinzel', serif; letter-spacing: 0.06em; }
+
+        .hud-btn {
+            background: rgba(0,0,0,0.35);
+            border: 1px solid rgba(69,240,255,0.40);
+            box-shadow:
+                0 0 0 1px rgba(255,255,255,0.05) inset,
+                0 0 20px rgba(69,240,255,0.12);
+            position: relative;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .hud-btn::before {
+            content: "";
+            position: absolute;
+            inset: 4px;
+            border-radius: 999px;
+            border: 1px solid rgba(69,240,255,0.18);
+            opacity: 0.9;
+            pointer-events: none;
+        }
+        .hud-btn:hover {
+            border-color: rgba(69,240,255,0.70);
+            box-shadow: 0 0 28px rgba(69,240,255,0.18), 0 0 60px rgba(69,240,255,0.08);
+            transform: translateY(-1px);
         }
 
         .wave-container { display: flex; justify-content: center; gap: 2px; }
@@ -40,7 +113,7 @@
 
         @keyframes waveLetters {
             0%, 100% { transform: scale(1); color: #ffffff; text-shadow: 0 0 5px rgba(255,255,255,0.1); }
-            50% { transform: scale(1.3); color: var(--gold); text-shadow: 0 0 20px var(--gold-glow), 0 0 40px var(--gold-glow); }
+            50% { transform: scale(1.18); color: var(--gold); text-shadow: 0 0 18px var(--gold-glow), 0 0 34px var(--gold-glow); }
         }
 
         .wave-letter:nth-child(1) { animation-delay: 0.1s; }
@@ -67,6 +140,40 @@
             overflow: hidden;
         }
 
+        .rank-card.hud-row {
+            background: linear-gradient(135deg, rgba(10,14,20,0.78) 0%, rgba(2,3,6,0.82) 100%);
+            border: 1px solid rgba(69,240,255,0.24);
+            border-radius: 26px;
+            box-shadow:
+                0 0 0 1px rgba(255,255,255,0.04) inset,
+                0 18px 50px rgba(0,0,0,0.55);
+            transform-style: preserve-3d;
+        }
+        .rank-card.hud-row::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            background:
+                linear-gradient(90deg, rgba(69,240,255,0.14), transparent 25%, transparent 75%, rgba(69,240,255,0.10)),
+                repeating-linear-gradient(90deg, rgba(69,240,255,0.06) 0 1px, transparent 1px 18px);
+            opacity: 0.22;
+            mix-blend-mode: screen;
+        }
+        .rank-card.hud-row::after {
+            content: "";
+            position: absolute;
+            inset: 10px;
+            border-radius: 18px;
+            pointer-events: none;
+            border: 1px solid rgba(69,240,255,0.14);
+            opacity: 0.9;
+        }
+
+        .hud-cut {
+            clip-path: polygon(0% 14px, 14px 0%, calc(100% - 14px) 0%, 100% 14px, 100% calc(100% - 14px), calc(100% - 14px) 100%, 14px 100%, 0% calc(100% - 14px));
+        }
+
         .first-place { border-color: var(--gold) !important; background: var(--gold-bg) !important; }
         .second-place { border-color: var(--silver) !important; background: var(--silver-bg) !important; }
         .third-place { border-color: var(--bronze) !important; background: var(--bronze-bg) !important; }
@@ -85,6 +192,32 @@
 
         .rank-card:hover .trophy-wrapper,
         .rank-card:hover .number-wrapper { transform: scale(1.4); }
+
+        /* Animated trophies (top 3) */
+        .trophy-wrapper svg {
+            filter: drop-shadow(0 0 12px rgba(69,240,255,0.10));
+            transform-origin: 50% 60%;
+        }
+        .trophy-anim {
+            animation: trophyFloat 3.4s ease-in-out infinite;
+        }
+        .trophy-anim.rank-1 { animation-duration: 3.0s; }
+        .trophy-anim.rank-2 { animation-duration: 3.3s; }
+        .trophy-anim.rank-3 { animation-duration: 3.6s; }
+        .trophy-anim::after {
+            content: "";
+            position: absolute;
+            inset: -10px;
+            border-radius: 999px;
+            background: radial-gradient(circle at 50% 40%, rgba(69,240,255,0.10), transparent 60%);
+            opacity: 0.9;
+            pointer-events: none;
+            filter: blur(2px);
+        }
+        @keyframes trophyFloat {
+            0%, 100% { transform: translateY(0px) scale(1); }
+            50% { transform: translateY(-6px) scale(1.02); }
+        }
 
         .admin-only { display: none !important; }
         .admin-flex { display: none !important; }
@@ -146,13 +279,91 @@
         }
 
         .glass-panel {
-            background: rgba(10, 10, 10, 0.7);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1.5px solid var(--gold);
-            box-shadow: 0 0 30px rgba(212, 175, 55, 0.15);
+            background: var(--hud-panel);
+            backdrop-filter: blur(22px);
+            -webkit-backdrop-filter: blur(22px);
+            border: 2px solid rgba(69,240,255,0.40);
+            box-shadow:
+                0 0 0 1px rgba(255,255,255,0.04) inset,
+                0 0 28px rgba(69,240,255,0.12),
+                0 0 80px rgba(69,240,255,0.06);
+            position: relative;
+        }
+        .glass-panel::before {
+            content: "";
+            position: absolute;
+            inset: 12px;
+            border-radius: 36px;
+            border: 1px solid rgba(69,240,255,0.18);
+            pointer-events: none;
+            opacity: 0.9;
         }
 
+        .hud-right { display: flex; align-items: stretch; gap: 14px; }
+        .points-box {
+            min-width: 96px;
+            width: 96px;
+            height: 78px;
+            padding: 10px 12px;
+            border-radius: 18px;
+            background: rgba(0,0,0,0.28);
+            border: 1px solid rgba(69,240,255,0.30);
+            box-shadow: 0 0 0 1px rgba(255,255,255,0.03) inset;
+            text-align: right;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .team-media {
+            width: 78px;
+            height: 78px;
+            aspect-ratio: 1 / 1;
+            border-radius: 18px;
+            background: rgba(0,0,0,0.22);
+            border: 1px solid rgba(69,240,255,0.30);
+            box-shadow:
+                0 0 0 1px rgba(255,255,255,0.03) inset,
+                0 0 22px rgba(69,240,255,0.10);
+            overflow: hidden;
+            display: block;
+            position: relative;
+            transition: transform 220ms ease, box-shadow 220ms ease, border-color 220ms ease;
+        }
+        .team-media img {
+            width: 100%;
+            height: 100%;
+            display: block;
+            object-fit: cover !important;
+            object-position: center !important;
+        }
+        .team-media.placeholder::before {
+            content: "IMAGEM";
+            font-size: 9px;
+            font-weight: 800;
+            letter-spacing: 0.28em;
+            color: rgba(69,240,255,0.75);
+            text-transform: uppercase;
+            text-shadow: 0 0 16px rgba(69,240,255,0.18);
+        }
+        .team-media.placeholder::after {
+            content: "ᚠᚢᚦᚨᚱᚲ";
+            position: absolute;
+            bottom: 6px;
+            left: 10px;
+            font-size: 10px;
+            letter-spacing: 0.24em;
+            color: rgba(212,175,55,0.38);
+        }
+
+        .rank-card:hover .team-media {
+            transform: translateY(-1px) scale(1.02);
+            border-color: rgba(69,240,255,0.48);
+            box-shadow:
+                0 0 0 1px rgba(255,255,255,0.04) inset,
+                0 0 28px rgba(69,240,255,0.14);
+        }
+
+        /* Legacy buttons kept for modals */
         .btn-header {
             color: #ffffff !important;
             border: 1.5px solid #27272a;
@@ -163,6 +374,11 @@
             box-shadow: 0 0 20px var(--gold-glow);
             transform: translateY(-1px);
         }
+
+        @media (prefers-reduced-motion: reduce) {
+            .trophy-anim { animation: none !important; }
+            body::after { animation: none !important; }
+        }
     </style>
 </head>
 <body class="min-h-screen p-4 md:p-12 selection:bg-gold selection:text-black">
@@ -171,7 +387,7 @@
     <div class="max-w-4xl mx-auto">
         <header class="mb-12 md:mb-20 relative flex flex-col items-center pt-14 md:pt-8">
             <div class="absolute top-0 left-0 md:left-[-20px]">
-                <button onclick="window.openChallengesModal()" class="btn-header text-[10px] px-5 py-2 rounded-full uppercase font-bold tracking-widest bg-black/50 shadow-sm">
+                <button onclick="window.openChallengesModal()" class="hud-btn text-[10px] px-5 py-2 rounded-full uppercase font-bold tracking-widest shadow-sm">
                     Desafio
                 </button>
             </div>
@@ -183,7 +399,7 @@
             <div class="h-1 w-full max-w-2xl bg-gradient-to-r from-transparent via-gold to-transparent opacity-30 mt-8"></div>
 
             <div class="absolute top-0 right-0 md:right-[-20px]">
-                <button id="loginBtn" onclick="window.toggleLogin()" class="btn-header text-[10px] px-5 py-2 rounded-full uppercase font-bold tracking-widest bg-black/50 shadow-sm">
+                <button id="loginBtn" onclick="window.toggleLogin()" class="hud-btn text-[10px] px-5 py-2 rounded-full uppercase font-bold tracking-widest shadow-sm">
                     Acesso Mestre
                 </button>
             </div>
@@ -364,6 +580,22 @@
             "Jhansen e Alvaro": "BROTHERS",
             "Erick e Marcos": "BETINHA",
             "Nathan e Diego": "DELTA"
+        };
+
+        // Team images (direita do card). Use URL ou caminho local.
+        // Pode mapear por team.id, nome curto (ex: "MIGAS") ou nome completo.
+        const teamImageMap = {
+            // Use caminho relativo pra funcionar tanto em `http://localhost` quanto abrindo o arquivo direto.
+            "ALPHA": "assets/alpha.png",
+            "BETINHA": "assets/betinha.jpeg",
+            "BROTHERS": "assets/brothers.jpeg",
+            "DELTA": "assets/delta.jpeg",
+            "MIGAS": "assets/migas.jpeg"
+        };
+
+        const getTeamImageUrl = (team) => {
+            const displayName = teamNamesMap[team.name] || team.name;
+            return teamImageMap[team.id] || teamImageMap[displayName] || teamImageMap[team.name] || '';
         };
 
         let teams = [];
@@ -743,7 +975,7 @@
 
         const getTrophySVG = (rank, color) => {
             return `
-                <div class="trophy-wrapper relative w-16 h-16">
+                <div class="trophy-wrapper trophy-anim rank-${rank} relative w-16 h-16">
                     <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-full drop-shadow-xl">
                         <path d="M19 5H18V4C18 3.44772 17.5523 3 17 3H7C6.44772 3 6 3.44772 6 4V5H5C3.34315 5 2 6.34315 2 8V9C2 10.6569 3.34315 12 5 12H6.17071C6.58254 13.7177 7.90312 15.0383 9.62078 15.4493C10.0571 16.3433 11.0001 17 12 17C12.9999 17 13.9429 16.3433 14.3792 15.4493C16.0969 15.0383 17.4175 13.7177 17.8293 12H19C20.6569 12 22 10.6569 22 9V8C22 6.34315 20.6569 5 19 5ZM5 10C4.44772 10 4 9.55228 4 9V8C4 7.44772 4.44772 7 5 7H6V10H5ZM20 9C20 9.55228 19.5523 10 19 10H18V7H19C19.5523 7 20 7.44772 20 8V9ZM12 19C10.8954 19 10 19.8954 10 21C10 21.5523 10.4477 22 11 22H13C13.5523 22 14 21.5523 14 21C14 19.8954 13.1046 19 12 19Z" fill="${color}"/>
                     </svg>
@@ -793,6 +1025,10 @@
 
                 const displayTeamName = teamNamesMap[team.name] || team.name;
                 const displayMembers = teamNamesMap[team.name] ? team.name : '';
+                const imgUrl = getTeamImageUrl(team);
+                const mediaHtml = imgUrl
+                    ? `<div class="team-media hud-cut"><img src="${imgUrl}" alt="Imagem ${displayTeamName}" loading="lazy" /></div>`
+                    : `<div class="team-media hud-cut placeholder" aria-label="Slot de imagem"></div>`;
 
                 const historyHtml = team.history && team.history.length > 0
                     ? team.history.map((h, hIdx) => `
@@ -814,18 +1050,21 @@
 
                 list.innerHTML += `
                     <div class="flex flex-col group">
-                        <div onclick="window.toggleHistory('${team.id}')" class="rank-card p-5 md:p-6 rounded-[36px] flex items-center gap-6 ${rankClass}">
+                        <div onclick="window.toggleHistory('${team.id}')" class="rank-card hud-row hud-cut p-5 md:p-6 flex items-center gap-5 ${rankClass}">
                             <div class="shimmer"></div>
                             <div class="flex items-center justify-center min-w-[64px]">${badgeHTML}</div>
-                            <div class="flex-grow">
-                                <div class="font-bold uppercase tracking-widest text-zinc-100 text-lg md:text-2xl">${displayTeamName}</div>
+                            <div class="flex-grow min-w-0">
+                                <div class="font-bold uppercase tracking-widest text-zinc-100 text-lg md:text-2xl truncate">${displayTeamName}</div>
                                 <div class="flex items-center gap-2 mt-0.5">
                                     <span class="text-[10px] md:text-xs text-zinc-500 font-semibold uppercase tracking-wider">${displayMembers}</span>
                                 </div>
                             </div>
-                            <div class="text-right">
-                                <div class="text-4xl md:text-5xl font-black text-white italic leading-none">${team.score}</div>
-                                <div class="text-[9px] text-gold uppercase font-black tracking-widest mt-1">PONTOS</div>
+                            <div class="hud-right">
+                                ${mediaHtml}
+                                <div class="points-box hud-cut">
+                                    <div class="text-4xl md:text-5xl font-black text-white italic leading-none">${team.score}</div>
+                                    <div class="text-[9px] text-gold uppercase font-black tracking-widest mt-1">PONTOS</div>
+                                </div>
                             </div>
                         </div>
                         <div id="history-${team.id}" class="hidden mt-3 p-6 glass-panel rounded-[36px] border border-zinc-800/30" style="border: 1.5px solid var(--gold)">
